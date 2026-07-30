@@ -69,11 +69,21 @@ impl Executor {
         for w in self.workers.iter_mut() {
             w.stop();
         }
+        self.task_queue.1.notify_all();
     }
 
     pub fn join(&mut self) {
         for w in self.workers.iter_mut() {
             w.join();
         }
+    }
+}
+
+impl Drop for Executor {
+    // Dropping the Executor clears the task queue and stops the workers
+    // Currently running tasks will still be finished
+    fn drop(&mut self) {
+        self.task_queue.0.lock().unwrap().clear();
+        self.stop_after_completion();
     }
 }

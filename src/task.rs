@@ -92,6 +92,14 @@ impl<R: Send + 'static> TaskHandle<R> {
             rx: rx,
         }
     }
+
+    pub fn get_receiver(&self) -> &mpsc::Receiver<ChannelMsg<R>> {
+        &self.rx
+    }
+
+    pub fn get_status(&self) -> TaskStatus {
+        self.state.get_status()
+    }
 }
 
 impl PartialEq for QueuedTask {
