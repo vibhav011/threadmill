@@ -1,22 +1,18 @@
 use crate::executor::TaskQueue;
 use std::{
-    sync::{Arc, Condvar, Mutex},
+    sync::{
+        Arc, Condvar, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
     thread::JoinHandle,
 };
 
 use crate::task::*;
 
-#[derive(Clone, Copy)]
-enum WorkerStatus {
-    Idle,
-    Running,
-}
-
 pub(crate) struct Worker {
     task: Option<QueuedTask>,
-    status: WorkerStatus,
     queue: Arc<(Mutex<TaskQueue>, Condvar)>,
-    is_running: Arc<Mutex<bool>>,
+    is_running: Arc<AtomicBool>,
     thread_handle: Option<JoinHandle<()>>,
 }
 
@@ -24,20 +20,17 @@ impl Worker {
     pub(crate) fn new(queue: Arc<(Mutex<TaskQueue>, Condvar)>) -> Self {
         Self {
             task: None,
-            status: WorkerStatus::Idle,
             queue: queue,
-            is_running: Arc::new(Mutex::new(false)),
+            is_running: Arc::new(AtomicBool::new(false)),
             thread_handle: None,
         }
     }
 
     pub(crate) fn start(&mut self) {
-        let mut is_running = self.is_running.lock().unwrap();
-        if *is_running {
+        if self.is_running.load(Ordering::Acquire) {
             return;
         }
-        *is_running = true;
-        drop(is_running);
+        self.is_running.store(true, Ordering::Relaxed);
 
         let queue = self.queue.clone();
         let is_r = self.is_running.clone();
@@ -45,7 +38,7 @@ impl Worker {
             'outer: loop {
                 let mut q = queue.0.lock().unwrap();
                 while q.len() == 0 {
-                    if !*is_r.lock().unwrap() {
+                    if !is_r.load(Ordering::Acquire) {
                         break 'outer;
                     }
                     q = queue.1.wait(q).unwrap();
@@ -63,7 +56,7 @@ impl Worker {
     }
 
     pub(crate) fn stop(&mut self) {
-        *self.is_running.lock().unwrap() = false;
+        self.is_running.store(false, Ordering::Relaxed);
     }
 
     pub(crate) fn join(&mut self) {

@@ -56,19 +56,20 @@ impl Executor {
             priority,
             tx,
         );
-        let cloned_status = task.get_state().clone();
+        let cloned_state = task.get_state().clone();
         let mut q = self.task_queue.0.lock().unwrap();
         task.get_state().set_status(TaskStatus::Queued);
         q.push(task);
         self.task_queue.1.notify_one();
 
-        TaskHandle::new(cloned_status, rx)
+        TaskHandle::new(cloned_state, rx)
     }
 
     pub fn stop_after_completion(&mut self) {
         for w in self.workers.iter_mut() {
             w.stop();
         }
+        let _q = self.task_queue.0.lock().unwrap();
         self.task_queue.1.notify_all();
     }
 
