@@ -32,6 +32,28 @@ fn main() {
 }
 ```
 
+Getting results from the tasks:
+
+```rust
+use threadmill::executor::Executor;
+
+fn main() {
+    let mut executor = Executor::new(4).unwrap();
+
+    let handle = executor.queue_task(|| {
+        42
+    });
+
+    executor.stop_after_completion();
+    executor.join();
+
+    let rx = handle.get_receiver();
+    if let Ok(num) = rx.recv() {
+        assert_eq!(num.unwrap(), 42);
+    }
+}
+```
+
 ## API overview
 
 ### Executor
@@ -39,10 +61,18 @@ fn main() {
 The `Executor` is the main entry point for the library.
 
 - `Executor::new(n_workers)` creates a new executor with `n_workers` worker threads.
-- `queue_task(cb)` queues a task with the default priority of `0`.
-- `queue_task_with_priority(cb, priority)` queues a task with a custom priority. This priority can be negative or positive, with larger values indicating higher priority.
+- `queue_task(cb)` queues a task with the default priority of `0`. Returns a `TaskHandle`.
+- `queue_task_with_priority(cb, priority)` queues a task with a custom priority. This priority can be negative or positive, with larger values indicating higher priority. Returns a `TaskHandle`.
 - `stop_after_completion()` tells workers to stop once the queued work has been processed.
 - `join()` waits for all worker threads to finish.
+- Dropping the executor will stop the executor and join the worker threads if they are still running. Any queued tasks that have not been processed will be dropped, but the currently running tasks will be allowed to finish.
+
+### TaskHandle
+
+The `TaskHandle` is returned when queuing tasks and can be used to retrieve the result of the task once it has completed, or query its status.
+
+- `get_receiver()` returns a `Receiver` that can be used to receive the result of the task once it has completed. If the task panicked, the result will be an `Err` variant containing the panic information.
+- `get_status()` returns the current status of the task, which can be `Created`, `Queued`, `Running`, or `Finished`.
 
 ## Notes
 

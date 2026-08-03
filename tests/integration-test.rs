@@ -37,6 +37,21 @@ fn queue_task_with_priority_executes_in_priority_order() {
     assert_eq!(observed, vec![3, 2, 1]);
 }
 
+#[test]
+fn executor_with_no_tasks() {
+    let mut executor = Executor::new(4).unwrap();
+    executor.stop_after_completion();
+    executor.join();
+}
+
+#[test]
+fn executor_with_one_task() {
+    let mut executor = Executor::new(4).unwrap();
+    executor.queue_task(|| 42);
+    executor.stop_after_completion();
+    executor.join();
+}
+
 const MOD: u64 = 10000007;
 
 fn fact(n: u32) -> u32 {
@@ -67,4 +82,17 @@ fn executor_runs_all_tasks() {
     }
 
     assert_eq!(ans, 1224702);
+}
+
+#[test]
+fn executor_with_panicking_task() {
+    let mut executor = Executor::new(4).unwrap();
+    let h = executor.queue_task(|| panic!("Oops!"));
+    let res = h.get_receiver().recv().unwrap();
+    match res {
+        Ok(_) => assert!(false),
+        Err(e) => {
+            println!("{e:?}")
+        }
+    }
 }
