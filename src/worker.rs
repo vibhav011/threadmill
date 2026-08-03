@@ -10,7 +10,6 @@ use std::{
 use crate::task::*;
 
 pub(crate) struct Worker {
-    task: Option<QueuedTask>,
     queue: Arc<(Mutex<TaskQueue>, Condvar)>,
     is_running: Arc<AtomicBool>,
     thread_handle: Option<JoinHandle<()>>,
@@ -19,7 +18,6 @@ pub(crate) struct Worker {
 impl Worker {
     pub(crate) fn new(queue: Arc<(Mutex<TaskQueue>, Condvar)>) -> Self {
         Self {
-            task: None,
             queue: queue,
             is_running: Arc::new(AtomicBool::new(false)),
             thread_handle: None,
