@@ -1,18 +1,18 @@
 use crate::task::*;
 use crate::worker::*;
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Condvar, Mutex, mpsc};
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
 // use priority_queue::PriorityQueue;
 use std::collections::BinaryHeap;
 
-pub(crate) type TaskQueue = BinaryHeap<QueuedTask>;
+pub(crate) type TaskQueue = BinaryHeap<Box<dyn QueuedTask + Send>>;
 
 pub struct Executor {
     n_workers: u32,
     workers: Vec<Worker>,
     task_queue: Arc<(Mutex<TaskQueue>, Condvar)>,
-    task_counter: AtomicUsize,
+    task_counter: AtomicU32,
 }
 
 impl Executor {
@@ -33,7 +33,7 @@ impl Executor {
             n_workers: n_workers,
             workers: workers,
             task_queue: queue,
-            task_counter: AtomicUsize::new(0),
+            task_counter: AtomicU32::new(0),
         })
     }
 
@@ -49,20 +49,20 @@ impl Executor {
         cb: F,
         priority: i32,
     ) -> TaskHandle<R> {
-        let (tx, rx) = mpsc::channel();
-        let task = QueuedTask::new(
+        let res = Arc::new((Mutex::new(None), Condvar::new()));
+        let task = SingleTask::new(
             self.task_counter.fetch_add(1, Ordering::SeqCst),
             cb,
+            res.clone(),
             priority,
-            tx,
         );
         let cloned_state = task.get_state().clone();
         let mut q = self.task_queue.0.lock().unwrap();
         task.get_state().set_status(TaskStatus::Queued);
-        q.push(task);
+        q.push(Box::new(task));
         self.task_queue.1.notify_one();
 
-        TaskHandle::new(cloned_state, rx)
+        TaskHandle::new(cloned_state, res.clone())
     }
 
     pub fn stop_after_completion(&mut self) {
