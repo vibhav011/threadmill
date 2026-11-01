@@ -75,9 +75,8 @@ fn executor_runs_all_tasks() {
 
     let mut ans = 0;
     for t in task_handles {
-        let rx = t.get_receiver();
-        while let Ok(num) = rx.recv() {
-            ans = (ans + num.unwrap()) % MOD as u32;
+        if let Ok(num) = t.get_result() {
+            ans = (ans + num) % MOD as u32;
         }
     }
 
@@ -88,7 +87,7 @@ fn executor_runs_all_tasks() {
 fn executor_with_panicking_task() {
     let mut executor = Executor::new(4).unwrap();
     let h = executor.queue_task(|| panic!("Oops!"));
-    let res = h.get_receiver().recv().unwrap();
+    let res = h.get_result();
     match res {
         Ok(_) => assert!(false),
         Err(e) => {

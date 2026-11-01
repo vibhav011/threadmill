@@ -47,9 +47,8 @@ fn main() {
     executor.stop_after_completion();
     executor.join();
 
-    let rx = handle.get_receiver();
-    if let Ok(num) = rx.recv() {
-        assert_eq!(num.unwrap(), 42);
+    if let Ok(num) = handle.get_result() {
+        assert_eq!(num, 42);
     }
 }
 ```
@@ -71,7 +70,7 @@ The `Executor` is the main entry point for the library.
 
 The `TaskHandle` is returned when queuing tasks and can be used to retrieve the result of the task once it has completed, or query its status.
 
-- `get_receiver()` returns a `Receiver` that can be used to receive the result of the task once it has completed. If the task panicked, the result will be an `Err` variant containing the panic information.
+- `get_result()` returns the result of the task once it has completed. If the task panicked, the result will be an `Err` variant containing the panic information.
 - `get_status()` returns the current status of the task, which can be `Created`, `Queued`, `Running`, or `Finished`.
 
 ## Notes
