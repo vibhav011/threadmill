@@ -2,6 +2,11 @@
 name = "threadmill"
 version = "0.1.0"
 edition = "2024"
+description = "A lightweight Rust thread pool with priority-based task scheduling and result handles."
+license = "MIT"
+repository = "https://github.com/vibhav011/threadmill"
+keywords = ["thread-pool", "task-scheduler", "priority-queue", "concurrency", "parallelism"]
+categories = ["concurrency", "data-structures"]
 
 [dependencies]
 priority-queue = "2.7.0"
